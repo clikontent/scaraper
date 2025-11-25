@@ -4,8 +4,9 @@ from .remoteok import scrape_remoteok
 from .myjobmag import scrape_myjobmag
 from .brightermonday import scrape_brightermonday
 from .beyondthesavannah import scrape_beyondthesavannah
-from .fuzu import scrape_fuzu
+from .indeed import scrape_indeed
 from .weworkremotely import scrape_weworkremotely
+from .remote_africa import scrape_remote_africa
 
 # List of all scraper functions
 SCRAPERS = [
@@ -14,6 +15,6 @@ SCRAPERS = [
     scrape_brightermonday,
     scrape_beyondthesavannah,
     scrape_indeed,
-    scrape_resome_africa,
+    scrape_remote_africa,
     scrape_weworkremotely
 ]
