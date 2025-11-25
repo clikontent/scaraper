@@ -1,5 +1,3 @@
-# cron.py
-
 import asyncio
 import inspect
 from datetime import datetime, timezone
@@ -97,12 +95,16 @@ async def run_scrapers():
 
             for job in jobs:
                 insert_job(job)
+
+            print(f"Finished scraper: {scraper.__name__}, inserted {len(jobs)} jobs.\n")
         except Exception as e:
             print(f"Error running scraper {scraper.__name__}: {e}")
 
 
 def main():
+    print(f"Starting cron job at {datetime.now(timezone.utc).isoformat()}")
     asyncio.run(run_scrapers())
+    print(f"Cron job finished at {datetime.now(timezone.utc).isoformat()}")
 
 
 if __name__ == "__main__":
