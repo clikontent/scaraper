@@ -1,10 +1,13 @@
+# scrapers/weworkremotely.py
+
 import aiohttp
 from bs4 import BeautifulSoup
-from datetime import datetime, timezone
+from datetime import datetime
 
 URL = "https://weworkremotely.com/top-trending-remote-jobs"
 
 async def scrape_weworkremotely():
+    """Scrape jobs from WeWorkRemotely."""
     jobs = []
 
     async with aiohttp.ClientSession() as session:
@@ -14,8 +17,6 @@ async def scrape_weworkremotely():
     soup = BeautifulSoup(html, "html.parser")
     listings = soup.select("li.feature")
 
-    now = datetime.now(timezone.utc)  # UTC datetime for timestamps
-
     for li in listings:
         try:
             title_el = li.select_one("span.title")
@@ -24,10 +25,14 @@ async def scrape_weworkremotely():
 
             title = title_el.text.strip() if title_el else None
             company = company_el.text.strip() if company_el else None
-            url = "https://weworkremotely.com" + url_el.get("href")
+            url = "https://weworkremotely.com" + url_el.get("href") if url_el else None
+
+            if not title or not url:
+                print(f"Skipping incomplete job: {company} - {url}")
+                continue
 
             job = {
-                "external_id": url,  # unique ID for duplicates
+                "external_id": url,
                 "title": title,
                 "company": company,
                 "description": None,
@@ -37,14 +42,14 @@ async def scrape_weworkremotely():
                 "experience_level": None,
                 "skills": [],
                 "requirements": [],
-                "posted_date": now,  # datetime object for timestamptz
+                "posted_date": datetime.utcnow().isoformat(),
                 "application_url": url,
                 "company_logo": None,
                 "source": "WeWorkRemotely",
                 "category": None,
                 "raw_data": {
                     "html": str(li),
-                    "scraped_at": now.isoformat(),  # JSON-safe
+                    "scraped_at": datetime.utcnow().isoformat(),
                 },
             }
 
