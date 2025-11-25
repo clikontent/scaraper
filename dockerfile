@@ -20,7 +20,7 @@ RUN pip install --upgrade pip setuptools wheel
 # Copy project files
 COPY . .
 
-# Install Python dependencies
+# Install Python dependencies from requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Environment variables will be provided via Render dashboard
