@@ -2,7 +2,7 @@
 
 import asyncio
 import inspect
-from datetime import datetime
+from datetime import datetime, timezone
 from utils.supabase_client import supabase
 from scrapers.job_websites import SCRAPERS
 
@@ -16,15 +16,32 @@ async def run_scraper_function(scraper):
         return await to_thread(scraper)
 
 
+def convert_datetimes(d):
+    """
+    Recursively convert all datetime objects in a dict to ISO strings
+    for JSON serialization / Supabase insertion.
+    """
+    new_d = {}
+    for k, v in d.items():
+        if isinstance(v, datetime):
+            new_d[k] = v.isoformat()
+        elif isinstance(v, dict):
+            new_d[k] = convert_datetimes(v)
+        else:
+            new_d[k] = v
+    return new_d
+
+
 def insert_job(job):
     external_id = job.get("external_id") or ""
-    url = job.get("url") or ""
+    application_url = job.get("application_url") or ""
 
+    # Duplicate check using correct columns
     try:
         query = (
             supabase.table("external_jobs")
             .select("id")
-            .or_(f"external_id.eq.{external_id},url.eq.{url}")
+            .or_(f"external_id.eq.{external_id},application_url.eq.{application_url}")
             .execute()
         )
     except Exception as e:
@@ -35,6 +52,8 @@ def insert_job(job):
         print(f"Skipping duplicate job: {job.get('title')} at {job.get('company')}")
         return
 
+    # Prepare record
+    now = datetime.now(timezone.utc)
     job_record = {
         "external_id": job.get("external_id"),
         "title": job.get("title"),
@@ -46,15 +65,18 @@ def insert_job(job):
         "experience_level": job.get("experience_level"),
         "skills": job.get("skills") or [],
         "requirements": job.get("requirements") or [],
-        "posted_date": job.get("posted_date"),
+        "posted_date": job.get("posted_date") or now,
         "application_url": job.get("application_url"),
         "company_logo": job.get("company_logo"),
         "source": job.get("source"),
         "category": job.get("category"),
         "raw_data": job.get("raw_data") or {},
-        "created_at": datetime.utcnow(),
-        "updated_at": datetime.utcnow(),
+        "created_at": now,
+        "updated_at": now,
     }
+
+    # Convert all datetimes to ISO strings for Supabase JSON insert
+    job_record = convert_datetimes(job_record)
 
     try:
         supabase.table("external_jobs").insert(job_record).execute()
@@ -64,6 +86,7 @@ def insert_job(job):
 
 
 async def run_scrapers():
+    # Run all scrapers sequentially
     for scraper in SCRAPERS:
         print(f"\nRunning scraper: {scraper.__name__}")
 
