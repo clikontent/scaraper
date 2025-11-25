@@ -1,22 +1,35 @@
 # cron.py
 
 import asyncio
+import inspect
 from datetime import datetime
 from utils.supabase_client import supabase
 from scrapers.job_websites import SCRAPERS
 
 
+async def run_scraper_function(scraper):
+    """Safely run sync or async scraper."""
+    if inspect.iscoroutinefunction(scraper):
+        return await scraper()
+    else:
+        from asyncio import to_thread
+        return await to_thread(scraper)
+
+
 def insert_job(job):
-    """
-    Insert a single job into Supabase, avoiding duplicates by external_id or url.
-    Fill missing columns with None.
-    """
-    query = (
-        supabase.table("external_jobs")
-        .select("id")
-        .or_(f"external_id.eq.{job.get('external_id')},url.eq.{job.get('url')}")
-        .execute()
-    )
+    external_id = job.get("external_id") or ""
+    url = job.get("url") or ""
+
+    try:
+        query = (
+            supabase.table("external_jobs")
+            .select("id")
+            .or_(f"external_id.eq.{external_id},url.eq.{url}")
+            .execute()
+        )
+    except Exception as e:
+        print("Duplicate check error:", e)
+        return
 
     if query.data:
         print(f"Skipping duplicate job: {job.get('title')} at {job.get('company')}")
@@ -43,17 +56,19 @@ def insert_job(job):
         "updated_at": datetime.utcnow(),
     }
 
-    supabase.table("external_jobs").insert(job_record).execute()
-    print(f"Inserted job: {job.get('title')} at {job.get('company')}")
+    try:
+        supabase.table("external_jobs").insert(job_record).execute()
+        print(f"Inserted job: {job.get('title')} at {job.get('company')}")
+    except Exception as e:
+        print("Insert error:", e)
 
 
 async def run_scrapers():
     for scraper in SCRAPERS:
-        print(f"Running scraper: {scraper.__name__}")
+        print(f"\nRunning scraper: {scraper.__name__}")
 
         try:
-            # Await async scrapers
-            jobs = await scraper()
+            jobs = await run_scraper_function(scraper)
 
             if not jobs:
                 print("No jobs returned.")
