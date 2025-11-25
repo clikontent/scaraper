@@ -13,6 +13,7 @@ SCRAPERS = [
     scrape_myjobmag,
     scrape_brightermonday,
     scrape_beyondthesavannah,
-    scrape_fuzu,
+    scrape_indeed,
+    scrape_resome_africa,
     scrape_weworkremotely
 ]
