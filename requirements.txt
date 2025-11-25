@@ -1,10 +1,5 @@
-# Scraping
 aiohttp==3.8.6
 beautifulsoup4==4.12.2
 lxml==4.9.3
-
-# Supabase client
 supabase==2.3.0
-
-# Env vars
 python-dotenv==1.0.0
