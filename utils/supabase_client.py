@@ -1,5 +1,5 @@
 import os
-from supabase import create_client, Client
+from supabase import create_client
 from datetime import datetime
 from dotenv import load_dotenv
 
@@ -11,7 +11,7 @@ SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
     raise ValueError("Missing Supabase environment variables")
 
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
 
 def insert_job(job: dict):
@@ -37,8 +37,8 @@ def insert_job(job: dict):
         "source": job.get("source") or None,
         "category": job.get("category") or None,
         "raw_data": job.get("raw_data") or {},
-        "created_at": None,
-        "updated_at": None,
+        "created_at": datetime.utcnow().isoformat(),
+        "updated_at": datetime.utcnow().isoformat(),
     }
 
     result = {"ok": True, "duplicate": False, "error": None}
