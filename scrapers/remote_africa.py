@@ -1,9 +1,8 @@
 import aiohttp
 from bs4 import BeautifulSoup
-from datetime import datetime
+from datetime import datetime, timezone
 
 URL = "https://remoteafrica.io"
-
 
 async def scrape_remote_africa():
     jobs = []
@@ -15,32 +14,35 @@ async def scrape_remote_africa():
     soup = BeautifulSoup(html, "html.parser")
     cards = soup.select("div.job-card")
 
+    now = datetime.now(timezone.utc)  # UTC datetime for timestamps
+
     for card in cards:
         try:
             title = card.select_one("h2").text.strip()
-            company = card.select_one(".company").text.strip() if card.select_one(".company") else None
-            location = "Remote (Africa)"
-            url = "https://remoteafrica.io" + card.select_one("a").get("href")
+            company_el = card.select_one(".company")
+            company = company_el.text.strip() if company_el else None
+            url_el = card.select_one("a")
+            url = "https://remoteafrica.io" + url_el.get("href") if url_el else None
 
             job = {
                 "external_id": url,
                 "title": title,
                 "company": company,
                 "description": None,
-                "location": location,
+                "location": "Remote (Africa)",
                 "job_type": None,
                 "salary": None,
                 "experience_level": None,
                 "skills": [],
                 "requirements": [],
-                "posted_date": datetime.utcnow().isoformat(),
+                "posted_date": now,  # datetime object for timestamptz
                 "application_url": url,
                 "company_logo": None,
                 "source": "RemoteAfrica",
                 "category": None,
                 "raw_data": {
                     "html": str(card),
-                    "scraped_at": datetime.utcnow().isoformat(),
+                    "scraped_at": now.isoformat(),  # JSON-safe string
                 },
             }
 
@@ -50,4 +52,3 @@ async def scrape_remote_africa():
             print("RemoteAfrica error:", e)
 
     return jobs
-

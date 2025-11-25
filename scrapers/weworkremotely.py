@@ -1,9 +1,8 @@
 import aiohttp
 from bs4 import BeautifulSoup
-from datetime import datetime
+from datetime import datetime, timezone
 
 URL = "https://weworkremotely.com/top-trending-remote-jobs"
-
 
 async def scrape_weworkremotely():
     jobs = []
@@ -14,6 +13,8 @@ async def scrape_weworkremotely():
 
     soup = BeautifulSoup(html, "html.parser")
     listings = soup.select("li.feature")
+
+    now = datetime.now(timezone.utc)  # UTC datetime for timestamps
 
     for li in listings:
         try:
@@ -26,7 +27,7 @@ async def scrape_weworkremotely():
             url = "https://weworkremotely.com" + url_el.get("href")
 
             job = {
-                "external_id": url,
+                "external_id": url,  # unique ID for duplicates
                 "title": title,
                 "company": company,
                 "description": None,
@@ -36,14 +37,14 @@ async def scrape_weworkremotely():
                 "experience_level": None,
                 "skills": [],
                 "requirements": [],
-                "posted_date": datetime.utcnow().isoformat(),
+                "posted_date": now,  # datetime object for timestamptz
                 "application_url": url,
                 "company_logo": None,
                 "source": "WeWorkRemotely",
                 "category": None,
                 "raw_data": {
                     "html": str(li),
-                    "scraped_at": datetime.utcnow().isoformat(),
+                    "scraped_at": now.isoformat(),  # JSON-safe
                 },
             }
 

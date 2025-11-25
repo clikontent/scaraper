@@ -1,9 +1,8 @@
 import aiohttp
 from bs4 import BeautifulSoup
-from datetime import datetime
+from datetime import datetime, timezone
 
 URL = "https://remoteok.com/?location=Worldwide&search=remote"
-
 
 async def scrape_remoteok():
     jobs = []
@@ -15,6 +14,8 @@ async def scrape_remoteok():
     soup = BeautifulSoup(html, "html.parser")
     rows = soup.select("tr.job")
 
+    now = datetime.now(timezone.utc)  # UTC datetime for timestamptz
+
     for row in rows:
         try:
             title = row.get("data-search") or None
@@ -23,7 +24,7 @@ async def scrape_remoteok():
             skills = [tag.text.strip() for tag in row.select(".tag")]
 
             job = {
-                "external_id": row.get("data-id") or url,
+                "external_id": row.get("data-id") or url,  # unique for duplicates
                 "title": title,
                 "company": company,
                 "description": None,
@@ -33,14 +34,14 @@ async def scrape_remoteok():
                 "experience_level": None,
                 "skills": skills,
                 "requirements": [],
-                "posted_date": datetime.utcnow().isoformat(),
+                "posted_date": now,  # datetime object for timestamptz
                 "application_url": url,
                 "company_logo": None,
                 "source": "RemoteOK",
                 "category": None,
                 "raw_data": {
                     "html": str(row),
-                    "scraped_at": datetime.utcnow().isoformat(),
+                    "scraped_at": now.isoformat(),  # JSON-safe string
                 },
             }
 
