@@ -6,13 +6,10 @@ WORKDIR /app
 
 # Install system dependencies required for lxml / aiohttp
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        gcc \
-        libxml2-dev \
-        libxslt1-dev \
-        python3-dev \
-        build-essential \
+        gcc libxml2-dev libxslt1-dev python3-dev build-essential \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
 
 # Upgrade pip, setuptools, wheel before installing packages
 RUN pip install --upgrade pip setuptools wheel
