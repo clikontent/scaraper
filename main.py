@@ -1,12 +1,13 @@
 import asyncio
-from scrapers.remote_ok import scrape_remoteok
+from scrapers.remoteok import scrape_remoteok
 from scrapers.indeed import scrape_indeed
 from supabase_client import insert_job
 
 # Add more scrapers if needed
 SCRAPERS = [
-    scrape_remoteok,
-    scrape_indeed,
+   scrape_remoteok,
+    scrape_remote_africa,
+    scrape_weworkremotely
 ]
 
 

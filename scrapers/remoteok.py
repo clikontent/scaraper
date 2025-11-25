@@ -2,7 +2,7 @@ import aiohttp
 from bs4 import BeautifulSoup
 from datetime import datetime
 
-URL = "https://remoteok.com/remote-africa-jobs"
+URL = "https://remoteok.com/?location=Worldwide&search=remote"
 
 
 async def scrape_remoteok():
