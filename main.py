@@ -1,17 +1,32 @@
 import asyncio
+import inspect
 from scrapers.remoteok import scrape_remoteok
 from scrapers.remote_africa import scrape_remote_africa
 from scrapers.weworkremotely import scrape_weworkremotely
 from scrapers.climatechangecareers import scrape_climatechangecareers
+from scrapers.nodesk import scrape_nodesk
+from scrapers.remoterocketship import scrape_remoterocketship
+
 from supabase_client import insert_job
 
-# Add more scrapers if needed
+
 SCRAPERS = [
-   scrape_remoteok,
+    scrape_remoteok,
     scrape_remote_africa,
     scrape_weworkremotely,
-    scrape_climatechangecareers
+    scrape_climatechangecareers,
+    scrape_nodesk,
+    scrape_remoterocketship
 ]
+
+
+async def run_scraper_function(scraper):
+    """Runs scraper whether it is async or normal."""
+    if inspect.iscoroutinefunction(scraper):
+        return await scraper()
+    else:
+        from asyncio import to_thread
+        return await to_thread(scraper)
 
 
 async def run_scrapers():
@@ -21,7 +36,11 @@ async def run_scrapers():
         try:
             print(f"🔎 Running {scraper.__name__}...")
 
-            jobs = await scraper()
+            jobs = await run_scraper_function(scraper)
+
+            if not jobs:
+                print(" → 0 jobs returned\n")
+                continue
 
             print(f" → {len(jobs)} jobs scraped")
 
