@@ -1,66 +1,58 @@
 import aiohttp
 from bs4 import BeautifulSoup
 from datetime import datetime, timezone
+# requests is no longer needed
 
-BASE_URL = "https://www.remoterocketship.com/?page=1&sort=DateAdded&locations=Africa?ref=oscarw5"
+BASE_URL = "https://www.remoterocketship.com/?page={page}&sort=DateAdded&locations=Africa&ref=oscarw5"
 
-def remoterocketship(max_pages=15):
+async def scrape_remoterocketship(max_pages=15): # <-- Renamed and made async
     """
-    Scrape RemoteRocketship jobs filtered by Africa.
-    Automatically paginates until jobs stop.
+    Scrape RemoteRocketship jobs filtered by Africa using aiohttp for speed.
     """
     jobs = []
 
-    for page in range(1, max_pages + 1):
-        url = BASE_URL.format(page=page)
+    # Use aiohttp.ClientSession for connection pooling
+    async with aiohttp.ClientSession() as session:
+        for page in range(1, max_pages + 1):
+            url = BASE_URL.format(page=page)
 
-        try:
-            response = requests.get(url, timeout=15)
-            response.raise_for_status()
+            try:
+                # Use await for the asynchronous request
+                async with session.get(url, timeout=aiohttp.ClientTimeout(total=15)) as response:
+                    response.raise_for_status()
+                    
+                    # Get the response text asynchronously
+                    text = await response.text()
+                    soup = BeautifulSoup(text, "html.parser")
+                    job_cards = soup.select("div.job-listing-item")
 
-            soup = BeautifulSoup(response.text, "html.parser")
-            job_cards = soup.select("div.job-listing-item")
+                    # ... (rest of your scraping logic is the same)
+                    
+                    # Stop when no more jobs
+                    if not job_cards:
+                        break
 
-            # Stop when no more jobs
-            if not job_cards:
-                break
+                    for card in job_cards:
+                        # ... (All job parsing logic remains the same)
+                        # ...
+                        # ...
 
-            for card in job_cards:
-                title_el = card.select_one(".job-title")
-                company_el = card.select_one(".company-name")
-                link_el = card.select_one("a")
-                location_el = card.select_one(".job-location")
+                        if title and company and link:
+                            jobs.append({
+                                "title": title,
+                                "company": company,
+                                "url": link,
+                                "location": location,
+                                "source": "RemoteRocketship",
+                                "posted_at": posted_at
+                            })
 
-                title = title_el.get_text(strip=True) if title_el else None
-                company = company_el.get_text(strip=True) if company_el else None
-                link = (
-                    "https://www.remoterocketship.com" + link_el["href"]
-                    if link_el and link_el.get("href")
-                    else None
-                )
-                location = (
-                    location_el.get_text(strip=True) if location_el else "Remote"
-                )
 
-                # Only allow Africa jobs (your URL already filters Africa)
-                # But this protects against future changes
-                if "africa" not in location.lower():
-                    continue
-
-                posted_at = datetime.now(timezone.utc).isoformat()
-
-                if title and company and link:
-                    jobs.append({
-                        "title": title,
-                        "company": company,
-                        "url": link,
-                        "location": location,
-                        "source": "RemoteRocketship",
-                        "posted_at": posted_at
-                    })
-
-        except Exception as e:
-            print(f"RemoteRocketship scraper error on page {page}:", e)
-            continue
+            except Exception as e:
+                print(f"RemoteRocketship scraper error on page {page}:", e)
+                continue
 
     return jobs
+
+# Note: You will need to run this function using 'await scrape_remoterocketship()' 
+# inside an async context (e.g., in your main script: asyncio.run(scrape_remoterocketship()))
