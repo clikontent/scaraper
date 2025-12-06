@@ -1,42 +1,39 @@
-# -------------------------------
-# Base image with Python + Node
-# -------------------------------
+# ---------------------------------------------
+# Base: Playwright image with all browser deps
+# ---------------------------------------------
 FROM mcr.microsoft.com/playwright:focal
 
-# Install Node.js (latest LTS)
+# Install Node.js (LTS)
 RUN apt-get update && \
     apt-get install -y curl && \
     curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - && \
-    apt-get install -y nodejs && \
-    node -v && npm -v
+    apt-get install -y nodejs
 
-# Set working directory
 WORKDIR /app
 
-# -------------------------------
+# ---------------------------------------------
 # Install Python dependencies
-# -------------------------------
-COPY requirements.txt .
+# ---------------------------------------------
+COPY requirements.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# -------------------------------
+# ---------------------------------------------
 # Install Node dependencies
-# -------------------------------
+# ---------------------------------------------
 COPY package.json package-lock.json* ./
 RUN npm install || true
 
-# -------------------------------
-# Copy the full project
-# -------------------------------
+# ---------------------------------------------
+# Copy project files
+# ---------------------------------------------
 COPY . .
 
-# -------------------------------
-# Install Playwright Browsers
-# -------------------------------
+# ---------------------------------------------
+# Install Playwright browsers inside container
+# ---------------------------------------------
 RUN npx playwright install --with-deps
 
-# -------------------------------
-# Default command (You can change this)
-# Run BOTH scrapers sequentially if needed
-# -------------------------------
-CMD ["bash", "-c", "python main.py && node scrapers/playwright_scraper.js"]
+# ---------------------------------------------
+# Default command (change if needed)
+# ---------------------------------------------
+CMD ["python", "main.py"]
