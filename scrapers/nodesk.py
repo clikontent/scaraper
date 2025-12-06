@@ -1,61 +1,72 @@
 import aiohttp
+from bs4 import BeautifulSoup
 from datetime import datetime, timezone
+from urllib.parse import urljoin
 
-API_URL = "https://nodesk.co/api/jobs/?page={page}"
+BASE_URL = "https://nodesk.co/remote-jobs/"
 
 async def scrape_nodesk(max_pages=5):
     jobs = []
-    page = 1
 
     async with aiohttp.ClientSession() as session:
-        while page <= max_pages:
-            url = API_URL.format(page=page)
-            
+        for page in range(1, max_pages + 1):
+            url = BASE_URL
+            if page > 1:
+                url = f"{BASE_URL}?page={page}"
+
             try:
                 async with session.get(url, headers={"User-Agent": "Mozilla/5.0"}) as resp:
                     resp.raise_for_status()
-                    data = await resp.json()
-
+                    html = await resp.text()
             except Exception as e:
-                print("NoDesk error:", e)
+                print(f"NoDesk error on page {page}: {e}")
                 break
 
-            job_list = data.get("results", [])
-            if not job_list:
+            soup = BeautifulSoup(html, "html.parser")
+            job_cards = soup.select("div.job-card, article.job-card, li.job-card")
+
+            if not job_cards:
+                print(f"No jobs found on page {page}")
                 break
 
-            for j in job_list:
-                posted_date = (
-                    datetime.fromisoformat(j["pub_date"]).replace(tzinfo=timezone.utc)
-                    if "pub_date" in j
-                    else datetime.now(timezone.utc)
-                )
+            for card in job_cards:
+                try:
+                    title_el = card.select_one("h2 a, h3 a")
+                    company_el = card.select_one(".company, .company-name")
+                    location_el = card.select_one(".location, .job-location")
+                    link_el = card.select_one("a")
 
-                job = {
-                    "external_id": j.get("id"),
-                    "title": j.get("title"),
-                    "company": j.get("company"),
-                    "description": j.get("description"),
-                    "location": j.get("location") or "Remote",
-                    "job_type": j.get("employment_type"),
-                    "salary": None,
-                    "experience_level": None,
-                    "skills": j.get("tags", []),
-                    "requirements": [],
-                    "posted_date": posted_date,
-                    "application_url": j.get("apply_url"),
-                    "company_logo": j.get("company_logo"),
-                    "source": "NoDesk",
-                    "category": j.get("categories"),
-                    "raw_data": j,
-                }
+                    title = title_el.get_text(strip=True) if title_el else None
+                    company = company_el.get_text(strip=True) if company_el else None
+                    location = location_el.get_text(strip=True) if location_el else "Remote"
+                    link = urljoin(BASE_URL, link_el["href"]) if link_el else None
+                    posted_date = datetime.now(timezone.utc)
 
-                jobs.append(job)
-
-            # NoDesk pagination
-            if not data.get("next"):
-                break
-
-            page += 1
+                    if title and company and link:
+                        jobs.append({
+                            "external_id": link,
+                            "title": title,
+                            "company": company,
+                            "description": None,  # Could fetch job page for full description
+                            "location": location,
+                            "job_type": None,
+                            "salary": None,
+                            "experience_level": None,
+                            "skills": [],
+                            "requirements": [],
+                            "posted_date": posted_date,
+                            "application_url": link,
+                            "company_logo": None,
+                            "source": "NoDesk",
+                            "category": None,
+                            "raw_data": str(card),
+                        })
+                except Exception as e:
+                    print("NoDesk job parse error:", e)
 
     return jobs
+
+# Example usage:
+# import asyncio
+# jobs = asyncio.run(scrape_nodesk(max_pages=2))
+# print(f"Found {len(jobs)} jobs")
