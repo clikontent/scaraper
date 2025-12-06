@@ -1,58 +1,66 @@
 import aiohttp
+from bs4 import BeautifulSoup
 from datetime import datetime, timezone
+from urllib.parse import urljoin
 
-API_URL = "https://www.climatechangecareers.com/api/jobs?page={page}&type=remote"
+BASE_URL = "https://www.climatechangecareers.com"
+REMOTE_JOBS_URL = BASE_URL + "/jobs/?remote=remote"
 
-async def scrape_climatechangecareers():
+async def scrape_climatechangecareers(max_pages=5):
     jobs = []
-    page = 1
-    more_pages = True
 
     async with aiohttp.ClientSession() as session:
-        while more_pages:
-            url = API_URL.format(page=page)
+        for page in range(1, max_pages + 1):
+            url = REMOTE_JOBS_URL + f"&page={page}"
             async with session.get(url, headers={"User-Agent": "Mozilla/5.0"}) as res:
-                data = await res.json()
+                html = await res.text()
 
-            job_list = data.get("jobs", [])
-            if not job_list:
+            soup = BeautifulSoup(html, "html.parser")
+            job_cards = soup.select("div.job-card, li.job-card, article.job-card")
+
+            if not job_cards:
+                print(f"No jobs found on page {page}")
                 break
 
-            for job in job_list:
+            for card in job_cards:
                 try:
-                    job_id = job.get("id")
-                    title = job.get("title")
-                    company = job.get("company_name")
-                    location = job.get("location") or "Remote"
-                    posted = job.get("published_at")
-                    url = f"https://www.climatechangecareers.com/jobs/{job_id}"
+                    title_el = card.select_one("h2 a, h3 a")
+                    company_el = card.select_one(".company, .job-company")
+                    location_el = card.select_one(".location, .job-location")
+                    link_el = card.select_one("a")
 
-                    posted_date = datetime.fromisoformat(posted).replace(tzinfo=timezone.utc) \
-                        if posted else datetime.now(timezone.utc)
+                    title = title_el.get_text(strip=True) if title_el else None
+                    company = company_el.get_text(strip=True) if company_el else None
+                    location = location_el.get_text(strip=True) if location_el else "Remote"
+                    link = urljoin(BASE_URL, link_el["href"]) if link_el else None
 
-                    jobs.append({
-                        "external_id": job_id,
-                        "title": title,
-                        "company": company,
-                        "description": job.get("description", ""),
-                        "location": location,
-                        "job_type": job.get("type"),
-                        "salary": job.get("salary"),
-                        "experience_level": None,
-                        "skills": job.get("skills", []),
-                        "requirements": job.get("requirements", []),
-                        "posted_date": posted_date,
-                        "application_url": url,
-                        "company_logo": job.get("company_logo"),
-                        "source": "ClimateChangeCareers",
-                        "category": job.get("sector"),
-                        "raw_data": job,
-                    })
+                    posted_date = datetime.now(timezone.utc)  # No posted date visible on list page
+
+                    if title and company and link:
+                        jobs.append({
+                            "external_id": link,
+                            "title": title,
+                            "company": company,
+                            "description": None,  # Can fetch detail page if needed
+                            "location": location,
+                            "job_type": None,
+                            "salary": None,
+                            "experience_level": None,
+                            "skills": [],
+                            "requirements": [],
+                            "posted_date": posted_date,
+                            "application_url": link,
+                            "company_logo": None,
+                            "source": "ClimateChangeCareers",
+                            "category": None,
+                            "raw_data": str(card)
+                        })
                 except Exception as e:
                     print("Climate jobs error:", e)
 
-            # API pagination
-            more_pages = data.get("has_more", False)
-            page += 1
-
     return jobs
+
+# Example test
+# import asyncio
+# jobs = asyncio.run(scrape_climatechangecareers())
+# print(f"Found {len(jobs)} jobs")
