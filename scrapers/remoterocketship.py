@@ -22,16 +22,19 @@ def get_headers():
         "Referer": "https://www.google.com/"
     }
 
-def remoterocketship(max_pages=15):
+
+def scrape_remoterocketship(max_pages=15):
+    """
+    Returns a list of normalized job dicts for insertion into Supabase.
+    """
     jobs = []
 
     for page in range(1, max_pages + 1):
         url = BASE_URL.format(page=page)
 
-        # --- Rate limit safety delay ---
         time.sleep(random.uniform(2.5, 5.0))
 
-        # --- Retry logic for 429 ---
+        # Retry logic
         for attempt in range(5):
             try:
                 response = requests.get(url, headers=get_headers(), timeout=20)
@@ -43,16 +46,14 @@ def remoterocketship(max_pages=15):
                     continue
 
                 response.raise_for_status()
-                break  # success, exit retry loop
-
+                break
             except Exception as e:
                 if attempt == 4:
-                    print(f"RemoteRocketship scraper FAILED on page {page}: {e}")
+                    print(f"RemoteRocketship FAILED on page {page}: {e}")
                     return jobs
-                else:
-                    wait = (2 ** attempt) + random.random()
-                    print(f"Error on page {page}. Retrying in {wait:.2f}s:", e)
-                    time.sleep(wait)
+                wait = (2 ** attempt) + random.random()
+                print(f"Error on page {page}. Retrying in {wait:.2f}s:", e)
+                time.sleep(wait)
 
         soup = BeautifulSoup(response.text, "html.parser")
         job_cards = soup.select("div.job-listing-item")
@@ -76,7 +77,7 @@ def remoterocketship(max_pages=15):
             )
             location = location_el.get_text(strip=True) if location_el else "Remote"
 
-            # Keep only Africa jobs
+            # Only Africa jobs
             if location and "africa" not in location.lower():
                 continue
 
@@ -84,12 +85,22 @@ def remoterocketship(max_pages=15):
 
             if title and company and link:
                 jobs.append({
+                    "external_id": link,   # use URL as unique id
                     "title": title,
                     "company": company,
-                    "url": link,
+                    "description": None,
                     "location": location,
+                    "job_type": None,
+                    "salary": None,
+                    "skills": [],
+                    "requirements": [],
+                    "experience_level": None,
+                    "posted_date": posted_at,
+                    "application_url": link,
+                    "company_logo": None,
                     "source": "RemoteRocketship",
-                    "posted_at": posted_at
+                    "category": None,
+                    "raw_data": {},
                 })
 
     return jobs
