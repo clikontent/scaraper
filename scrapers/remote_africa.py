@@ -12,19 +12,23 @@ async def scrape_remote_africa():
             html = await res.text()
 
     soup = BeautifulSoup(html, "html.parser")
-    cards = soup.select("div.job-card")
 
-    now = datetime.now(timezone.utc)  # UTC datetime for timestamps
+    # UPDATED SELECTOR
+    cards = soup.select("a.job-card__link")
+
+    now = datetime.now(timezone.utc)
 
     for card in cards:
         try:
-            title = card.select_one("h2").text.strip()
-            company_el = card.select_one(".company")
-            company = company_el.text.strip() if company_el else None
-            url_el = card.select_one("a")
-            url = "https://remoteafrica.io" + url_el.get("href") if url_el else None
+            title_el = card.select_one(".job-card__title")
+            company_el = card.select_one(".job-card__company")
 
-            job = {
+            title = title_el.get_text(strip=True) if title_el else None
+            company = company_el.get_text(strip=True) if company_el else None
+
+            url = "https://remoteafrica.io" + card.get("href")
+
+            jobs.append({
                 "external_id": url,
                 "title": title,
                 "company": company,
@@ -35,18 +39,16 @@ async def scrape_remote_africa():
                 "experience_level": None,
                 "skills": [],
                 "requirements": [],
-                "posted_date": now,  # datetime object for timestamptz
+                "posted_date": now,
                 "application_url": url,
                 "company_logo": None,
                 "source": "RemoteAfrica",
                 "category": None,
                 "raw_data": {
                     "html": str(card),
-                    "scraped_at": now.isoformat(),  # JSON-safe string
+                    "scraped_at": now.isoformat(),
                 },
-            }
-
-            jobs.append(job)
+            })
 
         except Exception as e:
             print("RemoteAfrica error:", e)
